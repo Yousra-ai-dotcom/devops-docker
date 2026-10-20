@@ -1,0 +1,31 @@
+name: CI devops 2025
+
+on:
+  # Lancer la CI à chaque push sur master et develop
+  push:
+    branches:
+      - master
+      - develop
+
+  # Lancer la CI lors d'une Pull Request
+  pull_request:
+
+jobs:
+  test-backend:
+    # Machine virtuelle utilisée par GitHub Actions
+    runs-on: ubuntu-24.04
+
+    steps:
+      # Récupérer le code du dépôt GitHub
+      - uses: actions/checkout@v4
+
+      # Installer Java 21
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      # Compiler l'application et exécuter les tests
+      - name: Build and test with Maven
+        run: mvn clean verify --file backend/simpleapi/pom.xml
