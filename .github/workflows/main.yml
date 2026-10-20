@@ -1,31 +1,88 @@
 name: CI devops 2025
 
+# "on" définit les événements qui déclenchent la CI
 on:
-  # Lancer la CI à chaque push sur master et develop
+  # Déclencher automatiquement la CI quand on envoie du code sur GitHub
   push:
+    # Sur quelles branches le workflow doit se lancer ?
     branches:
-      - master
-      - develop
+      - master   # Notre branche principale
+      - develop  # Branche utilisée pour le développement
 
-  # Lancer la CI lors d'une Pull Request
+  # Lancer également la CI lorsqu'une Pull Request est créée ou mise à jour
+  # Une Pull Request sert à proposer des modifications avant de les fusionner
   pull_request:
 
+# "jobs" contient les tâches à exécuter automatiquement
 jobs:
+  # Nom technique de notre tâche : tester le backend
   test-backend:
-    # Machine virtuelle utilisée par GitHub Actions
+
+    # GitHub fournit une machine virtuelle Ubuntu 24.04 pour exécuter la tâche
+    # On n'utilise donc pas directement notre Mac
     runs-on: ubuntu-24.04
 
+    # "steps" définit les étapes exécutées dans l'ordre
     steps:
-      # Récupérer le code du dépôt GitHub
-      - uses: actions/checkout@v4
 
-      # Installer Java 21
+      # Étape 1 : télécharger le code du dépôt GitHub sur la machine Ubuntu
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      # Étape 2 : installer Java pour pouvoir compiler notre application Spring Boot
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
+          # Temurin est une distribution du JDK (Java Development Kit)
           distribution: 'temurin'
+
+          # Notre projet utilise Java 21
           java-version: '21'
 
-      # Compiler l'application et exécuter les tests
+      # Étape 3 : compiler et tester automatiquement notre backend avec Maven
       - name: Build and test with Maven
+
+        # mvn : lance Maven
+        # clean : supprime les fichiers générés lors des compilations précédentes
+        # verify : compile et exécute les tests, puis vérifie le build
+        # --file : indique où se trouve le fichier pom.xml du backend
+        # Testcontainers démarre temporairement PostgreSQL pour les tests d'intégration
         run: mvn clean verify --file backend/simpleapi/pom.xml
+
+  # Deuxième job : construire les 3 images Docker
+  build-and-push-docker-image:
+
+    # Attendre que les tests du backend réussissent
+    needs: test-backend
+
+    # Utiliser une machine Ubuntu
+    runs-on: ubuntu-24.04
+
+    steps:
+      # Récupérer le code depuis GitHub
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Construire l'image Docker du backend
+      - name: Build image backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend/simpleapi
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/tp-devops-simple-api:latest
+          push: false
+
+      # Construire l'image Docker de la base PostgreSQL
+      - name: Build image database
+        uses: docker/build-push-action@v6
+        with:
+          context: ./database
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/tp-devops-database:latest
+          push: false
+
+      # Construire l'image Docker du serveur Apache HTTP
+      - name: Build image httpd
+        uses: docker/build-push-action@v6
+        with:
+          context: ./http-server
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/tp-devops-httpd:latest
+          push: false
