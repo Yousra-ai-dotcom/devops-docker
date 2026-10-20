@@ -48,6 +48,16 @@ jobs:
         # --file : indique où se trouve le fichier pom.xml du backend
         # Testcontainers démarre temporairement PostgreSQL pour les tests d'intégration
         run: mvn clean verify --file backend/simpleapi/pom.xml
+        # Analyser la qualité et la sécurité du code avec SonarQube Cloud
+      - name: Analyze code with SonarQube
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >
+          mvn -B sonar:sonar
+          -Dsonar.projectKey=yousra-ai-dotcom_devops-docker
+          -Dsonar.organization=yousra-ai-dotcom
+          -Dsonar.host.url=https://sonarcloud.io
+          --file backend/simpleapi/pom.xml
 
   # Deuxième job : construire les 3 images Docker
   build-and-push-docker-image:
@@ -62,6 +72,8 @@ jobs:
       # Récupérer le code depuis GitHub
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       # Se connecter à Docker Hub pour pouvoir publier nos images
       # Les identifiants sont stockés dans les secrets GitHub
       - name: Login to DockerHub
