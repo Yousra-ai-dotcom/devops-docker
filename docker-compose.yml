@@ -1,0 +1,47 @@
+services:
+  backend:
+    build: ./backend/simpleapi  #construire l'image PostgreSQL à partir de ce Dockerfile
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://database:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+    networks:     #connecter un service à un réseau /backend doit communiquer avec PostgreSQL
+      - app-network
+    depends_on:    #définir les dépendances entre services
+      database:    #Quand Spring Boot démarre, il essaie de se connecter à la base de données
+        condition: service_healthy #attendre que PostgreSQL soit déclaré opérationnel par son healthcheck avant de démarrer le backend
+    restart: unless-stopped #Docker redémarre automatiquement le conteneur après un arrêt inattendu
+
+  database:
+    build: ./database
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data #conserver les données même si le conteneur PostgreSQL est supprimé
+    networks:
+      - app-network
+    healthcheck: #savoir si PostgreSQL est prêt à accepter les connexions
+      test: ["CMD-SHELL", "pg_isready -U usr -d db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  httpd:
+    build: ./http-server
+    ports:
+      - "80:80"
+    networks:
+      - app-network
+    depends_on:
+      - backend #Apache doit transmettre les requêtes HTTP à Spring Boot
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge #permet aux conteneurs connectés de communiquer entre eux
+
+volumes:
+  postgres-data:
