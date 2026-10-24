@@ -1,5 +1,5 @@
 # Yousra AMEUR 
-
+# TP Part 01 et 01
 ---
 
 # TP Part 01 – Docker
@@ -270,3 +270,136 @@ Nous avons obtenu une application à trois niveaux fonctionnelle, composée de P
 L'API est accessible depuis `http://localhost/departments/IRC/students` et retourne correctement les données de la base PostgreSQL.
 
 Enfin, nous avons créé les trois repositories Docker Hub destinés à partager nos images.
+
+
+---
+
+# TP Part 02 – GitHub Actions / CI-CD
+
+## Introduction
+
+L'objectif de ce TP est d'automatiser les tests, la construction et la publication des images Docker grâce à GitHub Actions.
+
+Nous avons également intégré SonarQube Cloud afin d'analyser la qualité et la sécurité du code Java.
+
+Le workflow est défini dans le fichier `.github/workflows/main.yml`.
+
+## 1. Continuous Integration – Backend Tests
+
+Nous avons configuré GitHub Actions pour exécuter automatiquement les tests de notre backend Spring Boot.
+
+Le workflow utilise :
+- Ubuntu comme environnement d'exécution.
+- Java JDK 21.
+- Maven pour compiler et tester l'application.
+- Testcontainers pour les tests d'intégration avec PostgreSQL.
+
+Commande utilisée :
+
+```bash
+mvn clean verify --file backend/simpleapi/pom.xml
+```
+
+### Question 2-1 — What are Testcontainers?
+
+Testcontainers est une bibliothèque Java permettant de démarrer automatiquement des conteneurs Docker temporaires pendant les tests d'intégration.
+
+Dans notre projet, elle permet de tester le backend avec une véritable base PostgreSQL, sans devoir configurer manuellement une base de test.
+
+Les conteneurs sont supprimés après les tests.
+
+## 2. GitHub Actions – Secured Variables
+
+Nous avons configuré des secrets dans GitHub :
+
+- `DOCKERHUB_USERNAME`
+- `DOCKERHUB_TOKEN`
+- `SONAR_TOKEN`
+
+Ces secrets sont utilisés par le workflow sans exposer leurs valeurs dans le code source.
+
+### Question 2-2 — For what purpose do we need to use secured variables?
+
+Les variables sécurisées permettent de protéger les informations sensibles, notamment les tokens d'authentification et les identifiants.
+
+Elles évitent de stocker ces informations directement dans les fichiers du dépôt GitHub.
+
+GitHub Actions peut ainsi s'authentifier auprès de Docker Hub et SonarQube Cloud de manière sécurisée.
+
+## 3. Continuous Delivery – Docker Images
+
+Nous avons ajouté un deuxième job GitHub Actions nommé `build-and-push-docker-image`.
+
+Ce job construit et publie les images Docker de notre application sur Docker Hub.
+
+Il dépend du job `test-backend` grâce à l'instruction :
+
+```yaml
+needs: test-backend
+```
+
+### Question 2-3 — Why did we put `needs` on the Docker job?
+
+L'instruction `needs` permet de définir une dépendance entre deux jobs GitHub Actions.
+
+Dans notre projet, le job Docker attend que les tests du backend réussissent avant de commencer.
+
+Cela évite de publier des images Docker si les tests échouent.
+
+### Question 2-4 — For what purpose do we need to push Docker images?
+
+Publier les images Docker sur Docker Hub permet de les stocker, les partager et les réutiliser pour déployer l'application sur d'autres machines.
+
+Cela automatise la distribution des nouvelles versions et facilite le processus de Continuous Delivery.
+
+## 4. SonarQube Cloud – Code Quality Analysis
+
+Nous avons intégré SonarQube Cloud dans notre pipeline GitHub Actions.
+
+L'analyse est exécutée automatiquement avec Maven et utilise le secret `SONAR_TOKEN`.
+
+Commande d'analyse :
+
+```bash
+mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+  -Dsonar.projectKey=yousra-ai-dotcom_devops-docker \
+  -Dsonar.organization=yousra-ai-dotcom \
+  -Dsonar.host.url=https://sonarcloud.io \
+  --file backend/simpleapi/pom.xml
+```
+
+### Résultats SonarQube Cloud
+
+Lors de l'analyse du backend `simple-api`, nous avons obtenu :
+
+| Indicateur | Résultat |
+|---|---|
+| Quality Gate | Passed |
+| Security | D |
+| Reliability | A |
+| Maintainability | A |
+| Code Coverage | 53,6 % |
+| Duplications | 0,0 % |
+| Security Issues | 5 |
+| Dependency Risks | 130 |
+
+Le Quality Gate est validé, mais les problèmes de sécurité et les risques liés aux dépendances restent des points à améliorer.
+
+## 5. Résultats GitHub Actions
+
+Le workflow `CI devops 2025` a été exécuté avec succès sur la branche `master`.
+
+Les deux jobs ont réussi :
+
+- `test-backend` : compilation, tests Maven et analyse SonarQube.
+- `build-and-push-docker-image` : construction et publication des images Docker.
+
+Le workflow permet ainsi d'automatiser les principales étapes de CI/CD.
+
+## Conclusion
+
+Ce TP nous a permis de mettre en place un pipeline CI/CD avec GitHub Actions.
+
+Nous avons automatisé les tests du backend Java, la construction et la publication des images Docker, ainsi que l'analyse de qualité du code avec SonarQube Cloud.
+
+Le pipeline GitHub Actions fonctionne correctement. Des améliorations restent possibles concernant la sécurité et la couverture des tests.
