@@ -1,0 +1,60 @@
+name: Build and Push Docker Images
+
+# Démarrer après la fin du workflow Test Backend
+on:
+  workflow_run:
+    workflows:
+      - Test Backend
+    types:
+      - completed
+    branches:
+      - master
+
+jobs:
+  build-and-push-docker-image:
+    # Publier uniquement si les tests ont réussi
+    # et si le workflow a été déclenché par un push sur master
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.head_branch == 'master' }}
+
+    runs-on: ubuntu-24.04
+
+    steps:
+      # Récupérer exactement le commit qui a réussi les tests
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      # Se connecter à Docker Hub
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Construire et publier le backend
+      - name: Build and push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend/simpleapi
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/tp-devops-simple-api:latest
+
+      # Construire et publier PostgreSQL
+      - name: Build and push database
+        uses: docker/build-push-action@v6
+        with:
+          context: ./database
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/tp-devops-database:latest
+
+      # Construire et publier Apache
+      - name: Build and push httpd
+        uses: docker/build-push-action@v6
+        with:
+          context: ./http-server
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/tp-devops-httpd:latest
