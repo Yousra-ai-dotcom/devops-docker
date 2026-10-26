@@ -600,3 +600,7 @@ Ce résultat confirme que le reverse proxy Apache transmet correctement les requ
 Le déploiement automatique de l'application a été réalisé avec succès grâce à Ansible. Les cinq rôles permettent de gérer séparément l'installation de Docker, la création du réseau et le déploiement des trois services.
 
 L'application est accessible depuis le navigateur via l'adresse publique du serveur, ce qui valide le checkpoint « Deploy your App » du TP3.
+
+### 3-4 — Is it really safe to deploy automatically every new image on the hub? What can I do to make it more secure?
+Non, déployer automatiquement toutes les nouvelles images Docker Hub n'est pas totalement sécurisé. Une image peut contenir des bugs, des vulnérabilités ou du code non validé.
+Pour sécuriser le déploiement, il faut exécuter les tests CI avant la publication, analyser les vulnérabilités, utiliser des versions d'images identifiables plutôt que de dépendre uniquement de latest, protéger les secrets avec GitHub Actions Secrets et éventuellement demander une approbation avant le déploiement en production.

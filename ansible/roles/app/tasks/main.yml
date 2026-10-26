@@ -4,7 +4,7 @@
   community.docker.docker_container:
     name: backend
     image: "{{ dockerhub_username }}/tp-devops-simple-api:latest"
-    pull: missing   # Télécharger l'image si elle n'existe pas
+    pull: always  
     state: started   # S'assurer que le conteneur est démarré
     env:
       SPRING_DATASOURCE_URL: "jdbc:postgresql://database:5432/{{ postgres_db }}"

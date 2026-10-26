@@ -58,3 +58,52 @@ jobs:
           context: ./http-server
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/tp-devops-httpd:latest
+
+    # Déployer automatiquement après la publication des images Docker
+  deploy:
+    name: Deploy application with Ansible
+    needs: build-and-push-docker-image
+    runs-on: ubuntu-24.04
+
+    steps:
+      # Récupérer le commit qui a passé les tests CI
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      # Installer Ansible et la collection Docker sur le runner GitHub
+      - name: Install Ansible
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible
+          ansible-galaxy collection install community.docker
+
+      # Préparer la clé privée pour la connexion SSH au serveur
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.TAKIMA_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.TAKIMA_SSH_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa_takima
+          chmod 600 ~/.ssh/id_rsa_takima
+
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+        
+      # Exécuter les rôles Ansible sur le serveur Takima
+      - name: Deploy with Ansible
+        working-directory: ansible
+        env:
+          ANSIBLE_HOST: ${{ secrets.ANSIBLE_HOST }}
+          ANSIBLE_USER: ${{ secrets.ANSIBLE_USER }}
+          TAKIMA_SSH_KEY_PATH: /home/runner/.ssh/id_rsa_takima
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+        run: |
+          ansible-playbook -i inventories/setup.yml playbook.yml

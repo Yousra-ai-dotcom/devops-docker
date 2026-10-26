@@ -6,7 +6,7 @@
   # Interpréteur Python contenant le SDK Docker installé précédemment dans notre environnement virtuel.
   vars:
     ansible_python_interpreter: /opt/docker_venv/bin/python
-    dockerhub_username: "ussi77" 
+    dockerhub_username: "{{ lookup('env', 'DOCKERHUB_USERNAME') }}"
     postgres_user: "{{ lookup('env', 'POSTGRES_USER') }}"
     postgres_password: "{{ lookup('env', 'POSTGRES_PASSWORD') }}"
     postgres_db: "{{ lookup('env', 'POSTGRES_DB') }}"

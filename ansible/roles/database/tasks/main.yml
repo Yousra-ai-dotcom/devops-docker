@@ -4,7 +4,7 @@
   community.docker.docker_container:
     name: database
     image: "{{ dockerhub_username }}/tp-devops-database:latest"
-    pull: missing
+    pull: always
     state: started
     env:
       POSTGRES_USER: "{{ postgres_user }}"

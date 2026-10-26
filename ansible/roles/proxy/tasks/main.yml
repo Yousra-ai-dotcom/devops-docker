@@ -3,7 +3,7 @@
 - name: Launch Apache HTTPD proxy
   community.docker.docker_container:
     name: httpd
-    image: ussi77/tp-devops-httpd:latest
+    image: "{{ dockerhub_username }}/tp-devops-httpd:latest"
     state: started
     pull: always
     restart_policy: unless-stopped
