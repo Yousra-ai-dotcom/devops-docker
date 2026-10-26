@@ -1,0 +1,24 @@
+---
+# Rôle Database : déployer PostgreSQL dans un conteneur Docker
+- name: Launch PostgreSQL database
+  community.docker.docker_container:
+    name: database
+    image: "{{ dockerhub_username }}/tp-devops-database:latest"
+    pull: missing
+    state: started
+    env:
+      POSTGRES_USER: "{{ postgres_user }}"
+      POSTGRES_PASSWORD: "{{ postgres_password }}"
+      POSTGRES_DB: "{{ postgres_db }}"
+    volumes:
+      - "postgres-data:/var/lib/postgresql/data"
+    networks:
+      - name: app-network
+    restart_policy: unless-stopped
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "pg_isready -U {{ postgres_user }} -d {{ postgres_db }}"
+      interval: 5s
+      timeout: 5s
+      retries: 10

@@ -1,0 +1,15 @@
+---
+# Rôle App : déployer le backend Spring Boot
+- name: Launch Spring Boot backend
+  community.docker.docker_container:
+    name: backend
+    image: "{{ dockerhub_username }}/tp-devops-simple-api:latest"
+    pull: missing   # Télécharger l'image si elle n'existe pas
+    state: started   # S'assurer que le conteneur est démarré
+    env:
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://database:5432/{{ postgres_db }}"
+      SPRING_DATASOURCE_USERNAME: "{{ postgres_user }}"
+      SPRING_DATASOURCE_PASSWORD: "{{ postgres_password }}"
+    networks:
+      - name: app-network
+    restart_policy: unless-stopped     # Redémarrer automatiquement le backend

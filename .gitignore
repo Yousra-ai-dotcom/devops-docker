@@ -1,4 +1,15 @@
 database/data/
+
+# Variables d'environnement et secrets
 .env
+**/.env
+id_rsa
+id_rsa_*
+*.pem
+
+# Fichiers macOS
 .DS_Store
+**/.DS_Store
+
+# Fichiers Java compilés
 *.class

@@ -1,0 +1,19 @@
+all:  # Groupe principal contenant tous les serveurs
+  vars:  # Variables communes à tous les serveurs de l'inventaire
+    # Nom de l'utilisateur utilisé pour se connecter au serveur via SSH
+    # La valeur est récupérée depuis la variable ANSIBLE_USER du Terminal
+    ansible_user: "{{ lookup('env', 'ANSIBLE_USER') }}"
+
+    # Chemin vers la clé SSH privée permettant de s'authentifier sans mot de passe
+    # La clé reste sur notre Mac, elle n'est pas stockée dans ce fichier
+    ansible_ssh_private_key_file: "{{ lookup('env', 'TAKIMA_SSH_KEY_PATH') }}"
+
+    # Adresse IP du serveur distant, récupérée depuis l'environnement
+    ansible_host: "{{ lookup('env', 'ANSIBLE_HOST') }}"
+
+  children:  # Permet de créer des sous-groupes de serveurs.
+
+    prod:  # Groupe des serveurs de production
+      hosts:  # Liste des serveurs appartenant au groupe prod
+
+        serveur_takima:  # Nom logique donné à notre serveur distant

@@ -403,3 +403,200 @@ Ce TP nous a permis de mettre en place un pipeline CI/CD avec GitHub Actions.
 Nous avons automatisé les tests du backend Java, la construction et la publication des images Docker, ainsi que l'analyse de qualité du code avec SonarQube Cloud.
 
 Le pipeline GitHub Actions fonctionne correctement. Des améliorations restent possibles concernant la sécurité et la couverture des tests.
+
+---
+# TP3 — Ansible : Inventaire et commandes de base
+
+### 1. Configuration de l'inventaire Ansible
+
+L'inventaire Ansible permet de définir les serveurs distants à administrer ainsi que les paramètres nécessaires à leur connexion.
+
+Nous avons créé le fichier `ansible/inventories/setup.yml` :
+
+```yaml
+all:
+  vars:
+    ansible_user: admin
+    ansible_ssh_private_key_file: /path/to/private/key
+  children:
+    prod:
+      hosts:
+        IP:
+```
+
+**Explication :**
+
+- `all` : représente l'ensemble des serveurs.
+- `vars` : définit les variables de connexion.
+- `ansible_user` : précise l'utilisateur SSH (`admin`).
+- `ansible_ssh_private_key_file` : indique le chemin de la clé privée SSH.
+- `prod` : groupe des serveurs de production.
+- `hosts` : liste les serveurs à administrer.
+
+### 2. Vérification de la connexion Ansible
+
+Commande exécutée depuis le dossier `ansible` :
+
+```bash
+ansible all -i inventories/setup.yml -m ping
+```
+
+Cette commande utilise le module `ping` pour vérifier la connexion et l'authentification SSH avec le serveur distant.
+
+**Résultat obtenu :**
+- `SUCCESS` : connexion réussie.
+- `ping: pong` : Ansible peut communiquer avec le serveur et exécuter son module.
+- `changed: false` : aucune modification effectuée.
+
+### 3. Récupération des informations du serveur (Facts)
+
+Commande :
+
+```bash
+ansible all -i inventories/setup.yml -m setup -a "filter=ansible_distribution*"
+```
+
+Le module `setup` permet de récupérer automatiquement des informations sur le serveur distant, appelées *facts*.
+
+**Résultats obtenus :**
+- Système d'exploitation : Debian
+- Version : 12.7
+- Nom de version : Bookworm
+
+Cette commande permet de connaître les caractéristiques du serveur avant de le configurer.
+
+### 3-2 — Documentation du playbook Ansible
+
+Le playbook `ansible/playbook.yml` permet d'automatiser la configuration du serveur distant.
+
+Il utilise les paramètres suivants :
+
+- `hosts: all` : cible les serveurs définis dans l'inventaire.
+- `gather_facts: true` : récupère les informations système nécessaires, notamment la distribution Linux.
+- `become: true` : permet d'exécuter les tâches avec les privilèges administrateur.
+- `roles: - docker` : appelle le rôle chargé de l'installation de Docker.
+
+Le rôle `docker`, situé dans `ansible/roles/docker/tasks/main.yml`, regroupe les tâches d'installation des dépendances, de configuration du dépôt Docker, d'installation de Docker Engine et du SDK Python, ainsi que le démarrage du service Docker.
+
+Cette organisation sépare la configuration générale du playbook des tâches techniques. Elle facilite la maintenance, la réutilisation et l'évolution de l'automatisation.
+
+La commande `ansible-playbook -i inventories/setup.yml playbook.yml` permet d'exécuter le playbook sur le serveur distant.
+
+### 3-3 — Documentation de la configuration des conteneurs Docker
+
+#### Objectif
+
+L'objectif de cette étape est de déployer automatiquement notre application sur le serveur distant Takima à l'aide d'Ansible et de Docker.
+
+L'application est composée de trois services : PostgreSQL pour la base de données, Spring Boot pour le backend et Apache HTTPD pour le reverse proxy.
+
+Le déploiement est organisé en cinq rôles Ansible : `docker`, `network`, `database`, `app` et `proxy`.
+
+#### 1. Création du réseau Docker
+
+Le rôle `network` utilise le module `community.docker.docker_network` pour créer le réseau `app-network` avec le driver `bridge`.
+
+Ce réseau permet aux conteneurs de communiquer entre eux en utilisant leurs noms de services, sans exposer les ports internes de PostgreSQL et Spring Boot sur le serveur.
+
+#### 2. Déploiement de PostgreSQL
+
+Le rôle `database` utilise le module `community.docker.docker_container` pour démarrer le conteneur PostgreSQL.
+
+Configuration :
+
+- **Nom du conteneur :** `database`
+- **Image Docker Hub :** `ussi77/tp-devops-database:latest`
+- **Réseau :** `app-network`
+- **Port interne :** `5432`
+- **Variables d'environnement :** `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
+- **Volume :** stockage persistant des données PostgreSQL
+- **Politique de redémarrage :** `unless-stopped`
+
+Les variables d'environnement permettent de configurer les identifiants et le nom de la base de données. Le volume permet de conserver les données lorsque le conteneur est recréé.
+
+Un healthcheck permet également de vérifier que PostgreSQL est prêt à accepter des connexions.
+
+#### 3. Déploiement du backend Spring Boot
+
+Le rôle `app` utilise le module `community.docker.docker_container` pour démarrer l'application Java Spring Boot.
+
+Configuration :
+
+- **Nom du conteneur :** `backend`
+- **Image Docker Hub :** `ussi77/tp-devops-simple-api:latest`
+- **Réseau :** `app-network`
+- **Port interne :** `8080`
+- **Variables d'environnement :**
+  - `SPRING_DATASOURCE_URL`
+  - `SPRING_DATASOURCE_USERNAME`
+  - `SPRING_DATASOURCE_PASSWORD`
+- **Politique de redémarrage :** `unless-stopped`
+
+L'URL JDBC utilise le nom du conteneur `database` pour communiquer avec PostgreSQL sur le port `5432`.
+
+Les logs Spring Boot confirment le démarrage de Tomcat sur le port `8080` ainsi que l'établissement de la connexion à PostgreSQL.
+
+#### 4. Déploiement du reverse proxy Apache
+
+Le rôle `proxy` utilise le module `community.docker.docker_container` pour démarrer Apache HTTPD.
+
+Configuration :
+
+- **Nom du conteneur :** `httpd`
+- **Image Docker Hub :** `ussi77/tp-devops-httpd:latest`
+- **Réseau :** `app-network`
+- **Port publié :** `80:80`
+- **Politique de redémarrage :** `unless-stopped`
+
+Apache reçoit les requêtes HTTP des utilisateurs sur le port `80` et les transmet au backend Spring Boot sur le port `8080`.
+
+#### 5. Interpréteur Python et SDK Docker
+
+Le playbook définit l'interpréteur Python suivant :
+
+`ansible_python_interpreter: /opt/docker_venv/bin/python`
+
+Cet environnement virtuel contient le SDK Docker pour Python, nécessaire aux modules `community.docker.docker_network` et `community.docker.docker_container`.
+
+Cela permet à Ansible de gérer les réseaux et les conteneurs Docker sur le serveur distant.
+
+#### 6. Exécution et vérification du déploiement
+
+Le déploiement est exécuté avec la commande :
+
+```bash
+ansible-playbook -i inventories/setup.yml playbook.yml
+```
+
+Résultat obtenu :
+
+```text
+PLAY RECAP
+serveur_takima : ok=13 changed=2 unreachable=0 failed=0
+```
+
+La commande suivante permet de vérifier les conteneurs :
+
+```bash
+ansible all -i inventories/setup.yml -m command -a "docker ps" --become
+```
+
+Les trois conteneurs `database`, `backend` et `httpd` sont en cours d'exécution. PostgreSQL présente également le statut `healthy`.
+
+Enfin, l'API a été testée depuis Safari en utilisant l'adresse publique du serveur Takima :
+
+`http://3.250.55.22`
+
+Réponse JSON obtenue :
+
+```json
+{"id":1,"content":"Hello, World!"}
+```
+
+Ce résultat confirme que le reverse proxy Apache transmet correctement les requêtes HTTP à l'application Spring Boot, qui fonctionne avec PostgreSQL.
+
+#### Conclusion
+
+Le déploiement automatique de l'application a été réalisé avec succès grâce à Ansible. Les cinq rôles permettent de gérer séparément l'installation de Docker, la création du réseau et le déploiement des trois services.
+
+L'application est accessible depuis le navigateur via l'adresse publique du serveur, ce qui valide le checkpoint « Deploy your App » du TP3.

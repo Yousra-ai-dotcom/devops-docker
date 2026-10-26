@@ -1,0 +1,18 @@
+---
+# Déploiement de l'application sur le serveur Takima
+- hosts: all
+  gather_facts: true # Récupérer les informations du serveur distant
+  become: true # Exécuter les tâches nécessitant les droits administrateur
+  # Interpréteur Python contenant le SDK Docker installé précédemment dans notre environnement virtuel.
+  vars:
+    ansible_python_interpreter: /opt/docker_venv/bin/python
+    dockerhub_username: "ussi77" 
+    postgres_user: "{{ lookup('env', 'POSTGRES_USER') }}"
+    postgres_password: "{{ lookup('env', 'POSTGRES_PASSWORD') }}"
+    postgres_db: "{{ lookup('env', 'POSTGRES_DB') }}"
+  roles:
+    - docker # Installer et démarrer Docker
+    - network # Créer le réseau partagé par les conteneurs
+    - database # Déployer la base de données PostgreSQL
+    - app # Déployer l'application Spring Boot
+    - proxy # Déployer le serveur Apache en tant que reverse proxy

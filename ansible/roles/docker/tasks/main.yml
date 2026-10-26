@@ -1,0 +1,58 @@
+---
+# Rôle Docker installation et configuration du serveur
+
+# Étape 1 : installer les dépendances
+- name: Install required packages
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - python3-venv
+    state: present
+    update_cache: true
+
+# Étape 2 : ajouter la clé GPG officielle de Docker
+- name: Add Docker GPG key
+  ansible.builtin.apt_key:
+    url: https://download.docker.com/linux/debian/gpg
+    state: present
+
+# Étape 3 : configurer le dépôt Docker
+- name: Add Docker APT repository
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/debian {{ ansible_facts['distribution_release'] }} stable"
+    state: present
+    update_cache: true
+
+# Étape 4 : installer Docker Engine
+- name: Install Docker
+  ansible.builtin.apt:
+    name: docker-ce
+    state: present
+
+# Étape 5 : installer Python et pip
+- name: Install Python3 and pip3
+  ansible.builtin.apt:
+    name:
+      - python3
+      - python3-pip
+    state: present
+
+# Étape 6 : créer un environnement Python isolé
+- name: Create a virtual environment for Docker SDK
+  ansible.builtin.command: python3 -m venv /opt/docker_venv
+  args:
+    creates: /opt/docker_venv
+
+# Étape 7 : installer le SDK Docker pour Python
+- name: Install Docker SDK for Python in virtual environment
+  ansible.builtin.command: /opt/docker_venv/bin/pip install docker
+
+# Étape 8 : vérifier que Docker est démarré
+- name: Make sure Docker is running
+  ansible.builtin.service:
+    name: docker
+    state: started

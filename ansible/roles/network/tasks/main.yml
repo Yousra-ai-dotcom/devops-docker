@@ -1,0 +1,13 @@
+---
+# Ce rôle crée un réseau Docker sur notre serveur Takima.
+# Le réseau permet aux conteneurs PostgreSQL, Spring Boot
+# et Apache de communiquer entre eux.
+
+- name: Create Docker network
+  community.docker.docker_network:
+    # Nom du réseau utilisé par les conteneurs
+    name: app-network
+    # Réseau de type bridge
+    driver: bridge
+    # Ansible vérifie que le réseau existe
+    state: present
