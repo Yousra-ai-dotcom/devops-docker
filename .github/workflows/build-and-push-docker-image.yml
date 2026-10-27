@@ -107,6 +107,13 @@ jobs:
 
           printf '%s' "$ANSIBLE_VAULT_PASSWORD" > "$RUNNER_TEMP/vault-pass"
           chmod 600 "$RUNNER_TEMP/vault-pass"
+          docker run --rm \
+            -v "$PWD/ansible:/workspace/ansible:ro" \
+            -v "$RUNNER_TEMP/vault-pass:/run/secrets/vault-pass:ro" \
+            tp-devops-ansible \
+            ansible-vault view \
+              /workspace/ansible/group_vars/all/vault.yml \
+              --vault-password-file /run/secrets/vault-pass > /dev/null
 
           docker run --rm \
             -v "$PWD/ansible:/workspace/ansible:ro" \

@@ -3,6 +3,8 @@
 - hosts: all
   gather_facts: true # Récupérer les informations du serveur distant
   become: true # Exécuter les tâches nécessitant les droits administrateur
+  vars_files:
+    - group_vars/all/vault.yml
   # Interpréteur Python contenant le SDK Docker installé précédemment dans notre environnement virtuel.
   vars:
     ansible_python_interpreter: /opt/docker_venv/bin/python
