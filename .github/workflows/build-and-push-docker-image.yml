@@ -80,13 +80,6 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      # Installer Ansible et la collection Docker sur le runner GitHub
-      - name: Install Ansible
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ansible
-          ansible-galaxy collection install community.docker
-
       # Préparer la clé privée pour la connexion SSH au serveur
       - name: Configure SSH
         env:
@@ -102,16 +95,31 @@ jobs:
           printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
         
-      # Exécuter les rôles Ansible sur le serveur Takima
-      - name: Deploy with Ansible
-        working-directory: ansible
+      # Déployer avec Ansible exécuté dans Docker et Vault
+      - name: Deploy with Dockerized Ansible and Vault
         env:
           ANSIBLE_HOST: ${{ secrets.ANSIBLE_HOST }}
           ANSIBLE_USER: ${{ secrets.ANSIBLE_USER }}
-          TAKIMA_SSH_KEY_PATH: /home/runner/.ssh/id_rsa_takima
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
         run: |
-          ansible-playbook -i inventories/setup.yml playbook.yml
+          docker build -t tp-devops-ansible ./ansible/runner
+
+          printf '%s' "$ANSIBLE_VAULT_PASSWORD" > "$RUNNER_TEMP/vault-pass"
+          chmod 600 "$RUNNER_TEMP/vault-pass"
+
+          docker run --rm \
+            -v "$PWD/ansible:/workspace/ansible:ro" \
+            -v "$HOME/.ssh:/root/.ssh:ro" \
+            -v "$RUNNER_TEMP/vault-pass:/run/secrets/vault-pass:ro" \
+            -e ANSIBLE_HOST \
+            -e ANSIBLE_USER \
+            -e DOCKERHUB_USERNAME \
+            -e TAKIMA_SSH_KEY_PATH=/root/.ssh/id_rsa_takima \
+            tp-devops-ansible \
+            ansible-playbook \
+              -i ansible/inventories/setup.yml \
+              ansible/playbook.yml \
+              --vault-password-file /run/secrets/vault-pass
+
+          rm -f "$RUNNER_TEMP/vault-pass"

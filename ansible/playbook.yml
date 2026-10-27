@@ -7,9 +7,9 @@
   vars:
     ansible_python_interpreter: /opt/docker_venv/bin/python
     dockerhub_username: "{{ lookup('env', 'DOCKERHUB_USERNAME') }}"
-    postgres_user: "{{ lookup('env', 'POSTGRES_USER') }}"
-    postgres_password: "{{ lookup('env', 'POSTGRES_PASSWORD') }}"
-    postgres_db: "{{ lookup('env', 'POSTGRES_DB') }}"
+    postgres_user: "{{ vault_postgres_user }}"
+    postgres_password: "{{ vault_postgres_password }}"
+    postgres_db: "{{ vault_postgres_db }}"
   roles:
     - docker # Installer et démarrer Docker
     - network # Créer le réseau partagé par les conteneurs
