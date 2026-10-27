@@ -15,4 +15,5 @@
     - network # Créer le réseau partagé par les conteneurs
     - database # Déployer la base de données PostgreSQL
     - app # Déployer l'application Spring Boot
+    - front
     - proxy # Déployer le serveur Apache en tant que reverse proxy

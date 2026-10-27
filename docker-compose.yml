@@ -29,6 +29,12 @@ services:
       retries: 10
     restart: unless-stopped
 
+  front:
+    build: ./devops-front
+    networks:
+      - app-network
+    restart: unless-stopped
+
   httpd:
     build: ./http-server
     ports:
@@ -37,6 +43,7 @@ services:
       - app-network
     depends_on:
       - backend #Apache doit transmettre les requêtes HTTP à Spring Boot
+      - front #Apache doit transmettre les requêtes HTTP à Vue.js
     restart: unless-stopped
 
 networks:

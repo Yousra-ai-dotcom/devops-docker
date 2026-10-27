@@ -51,6 +51,14 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/tp-devops-database:latest
 
+      # Construire et publier le frontend Vue.js
+      - name: Build and push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./devops-front
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/tp-devops-front:latest
+
       # Construire et publier Apache
       - name: Build and push httpd
         uses: docker/build-push-action@v6
